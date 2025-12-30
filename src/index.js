@@ -186,7 +186,17 @@ async function handleLineText({ userId, replyToken, text }) {
     }
 
     // キーワードがマッチした場合、AIに質問を渡してQA回答を取得
-    if (matchedKeyword && OPENAI_API_KEY) {
+    if (matchedKeyword) {
+      if (!OPENAI_API_KEY) {
+        await replyLineMessage({
+          channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
+          replyToken,
+          text: "申し訳ございません。現在AIサービスが利用できません。",
+          imageUrls: matchedImages,
+        });
+        return;
+      }
+
       try {
         const aiText = await generateAiReply({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
         await replyLineMessage({
@@ -199,6 +209,13 @@ async function handleLineText({ userId, replyToken, text }) {
       } catch (err) {
         const msg = err && typeof err === "object" && "message" in err ? err.message : String(err);
         await notifyConsole(`AI reply error: ${msg}`);
+        await replyLineMessage({
+          channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
+          replyToken,
+          text: "恐れ入ります、ただいま自動応答が混み合っています。少し時間をおいてからもう一度お試しください。",
+          imageUrls: matchedImages,
+        });
+        return;
       }
     }
 
