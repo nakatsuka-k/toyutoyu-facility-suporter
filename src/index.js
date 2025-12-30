@@ -174,14 +174,32 @@ async function handleLineText({ userId, replyToken, text }) {
   // If user is NOT in login flow, route other messages to AI (support/inquiry).
   const current = sessionStore.get(userId);
   if (!current || current.state !== "login") {
-    if (t.includes("パスワード")) {
-      await replyLineMessage({
-        channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
-        replyToken,
-        text:
-          "パスワードに関する案内です。ログインは『ログイン』→メールアドレス→パスワードの順で進めてください。\nパスワードの再設定などはサブスク詳細ページもあわせてご確認ください: https://toyutoyu.com/price",
-      });
-      return;
+    // まずキーワードマッチングをチェック
+    let matchedKeyword = null;
+    let matchedImages = [];
+    for (const [keyword, urls] of Object.entries(qaKeywordImageMap)) {
+      if (t.includes(keyword)) {
+        matchedKeyword = keyword;
+        matchedImages = urls;
+        break;
+      }
+    }
+
+    // キーワードがマッチした場合、AIに質問を渡してQA回答を取得
+    if (matchedKeyword && OPENAI_API_KEY) {
+      try {
+        const aiText = await generateAiReply({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
+        await replyLineMessage({
+          channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
+          replyToken,
+          text: aiText,
+          imageUrls: matchedImages,
+        });
+        return;
+      } catch (err) {
+        const msg = err && typeof err === "object" && "message" in err ? err.message : String(err);
+        await notifyConsole(`AI reply error: ${msg}`);
+      }
     }
 
     if (!OPENAI_API_KEY) {
@@ -196,21 +214,11 @@ async function handleLineText({ userId, replyToken, text }) {
 
     try {
       const aiText = await generateAiReply({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
-      
-      // キーワードに該当する画像があれば送信
-      let imagesToSend = [];
-      for (const [keyword, urls] of Object.entries(qaKeywordImageMap)) {
-        if (t.includes(keyword)) {
-          imagesToSend = urls;
-          break;
-        }
-      }
 
       await replyLineMessage({
         channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
         replyToken,
         text: aiText,
-        imageUrls: imagesToSend,
       });
     } catch (err) {
       const msg = err && typeof err === "object" && "message" in err ? err.message : String(err);
