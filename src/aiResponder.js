@@ -84,7 +84,59 @@ async function generateAiReply({ apiKey, model, userText }) {
   return String(text ?? "").trim();
 }
 
+// 質問からQ&AカテゴリのID（Q1-Q12）を判定する
+async function determineQaCategory({ apiKey, model, userText }) {
+  const categorizationPrompt = `
+あなたはと湯と湯の施設管理者向けサポートBotです。
+ユーザーからの質問を読んで、下記のQ&Aカテゴリのうち、最も適切なものを判定してください。
+
+【Q&Aカテゴリ一覧】
+Q1: ポイント設定（ポイント設定を自由に変更できるか）
+Q2: 施設情報（施設情報を勝手に変更できるか）
+Q3: 売上振込（売上はいつ振り込まれるか）
+Q4: ポイント単価（1ポイントあたりいくら）
+Q5: パスワード再設定（パスワードの再設定方法）
+Q6: ポイント購入（ポイント購入方法）
+Q7: 新規登録（新規登録方法）
+Q8: ポイント支払い（ポイント支払い方法）
+Q9: 問い合わせ（問い合わせ先）
+Q10: アカウント削除（アカウント削除方法）
+Q11: サブスク解約（サブスク解約方法）
+Q12: 支払い画面エラー（支払い画面エラーについて）
+
+ユーザーの質問：「${userText}」
+
+該当するQ&AのID（Q1～Q12の形式で、例：Q3）を1つだけ返してください。
+それ以上の説明は不要です。該当するものがない場合は「Q_OTHER」と返してください。
+`;
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.1,
+      max_tokens: 10,
+      messages: [
+        { role: "user", content: categorizationPrompt },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    return "Q_OTHER";
+  }
+
+  const data = await res.json();
+  const category = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  return String(category ?? "").trim().toUpperCase();
+}
+
 module.exports = {
   generateAiReply,
+  determineQaCategory,
   qaContentMap,
 };

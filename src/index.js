@@ -8,7 +8,7 @@ const { pushLineMessage, replyLineMessage, broadcastLineMessage } = require("./n
 const { verifyLineSignature } = require("./lineWebhook");
 const { LineSessionStore } = require("./lineSessionStore");
 const { authCheck, getUserPoints } = require("./toyutoyuApi");
-const { generateAiReply, qaContentMap } = require("./aiResponder");
+const { generateAiReply, determineQaCategory, qaContentMap } = require("./aiResponder");
 
 const app = express();
 
@@ -174,7 +174,7 @@ async function handleLineText({ userId, replyToken, text }) {
   // If user is NOT in login flow, route other messages to AI (support/inquiry).
   const current = sessionStore.get(userId);
   if (!current || current.state !== "login") {
-    // まずキーワードマッチングをチェック
+    // まずキーワードマッチングをチェック（完全一致）
     let matchedKeyword = null;
     let matchedImages = [];
     for (const [keyword, urls] of Object.entries(qaKeywordImageMap)) {
@@ -187,7 +187,6 @@ async function handleLineText({ userId, replyToken, text }) {
 
     // キーワードがマッチした場合、Q&A定型文を返す
     if (matchedKeyword) {
-      // キーワードに対応するQ&A定型文を取得
       const qaContent = qaContentMap[matchedKeyword];
       if (qaContent) {
         await replyLineMessage({
@@ -206,6 +205,45 @@ async function handleLineText({ userId, replyToken, text }) {
     }
 
     if (!isAiEligibleText(t)) {
+      // AIで質問内容からQ&Aカテゴリを判定してみる
+      try {
+        const category = await determineQaCategory({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
+        // Q1～Q12に該当する場合
+        if (category && category.match(/^Q\d{1,2}$/)) {
+          const qaIndex = category.toLowerCase(); // "Q1", "Q2", etc.
+          // カテゴリに対応する定型文を取得
+          const categoryToKeywordMap = {
+            "Q1": "ポイント設定",
+            "Q2": "施設情報",
+            "Q3": "売上振込",
+            "Q4": "ポイント単価",
+            "Q5": "パスワード再設定",
+            "Q6": "ポイント購入",
+            "Q7": "新規登録",
+            "Q8": "ポイント支払",
+            "Q9": "問い合わせ",
+            "Q10": "アカウント削除",
+            "Q11": "解約",
+            "Q12": "支払い画面エラー",
+          };
+          const keyword = categoryToKeywordMap[category];
+          const qaContent = keyword ? qaContentMap[keyword] : null;
+          const images = keyword ? qaKeywordImageMap[keyword] : [];
+
+          if (qaContent) {
+            await replyLineMessage({
+              channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
+              replyToken,
+              text: qaContent,
+              imageUrls: images || [],
+            });
+            return;
+          }
+        }
+      } catch (_err) {
+        // 判定失敗時はusage返信
+      }
+      
       await replyUsage({ replyToken });
       return;
     }
