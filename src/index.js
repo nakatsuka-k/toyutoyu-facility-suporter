@@ -100,16 +100,6 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
-function isAiEligibleText(text) {
-  const t = normalizeText(text);
-  if (!t) return false;
-  // Don't send credential-related text to AI.
-  if (t.includes("パスワード")) return false;
-  // Commands are handled elsewhere.
-  if (t === "ログイン" || t === "ポイント" || t === "キャンセル") return false;
-  return true;
-}
-
 async function handleLineText({ userId, replyToken, text }) {
   const t = normalizeText(text);
   if (!t) return;
@@ -177,10 +167,6 @@ async function handleLineText({ userId, replyToken, text }) {
   const current = sessionStore.get(userId);
   if (!current || current.state !== "login") {
     if (!OPENAI_API_KEY) {
-      return;
-    }
-
-    if (!isAiEligibleText(t)) {
       return;
     }
 
