@@ -36,6 +36,49 @@ const sessionStore = new LineSessionStore({
   loggedInTtlMs: LOGGED_IN_TTL_MS,
 });
 
+// Q&A関連キーワードと対応する画像URL
+const qaKeywordImageMap = {
+  "パスワード再設定": [
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488825_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488826_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488827_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488828_0.jpg",
+  ],
+  "ポイント購入": [
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488832_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488833_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488829_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488830_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488831_0.jpg",
+  ],
+  "新規登録": [
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488834_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488836_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488837_0.jpg",
+  ],
+  "ポイント支払": [
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488838_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488839_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488840_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488841_0.jpg",
+  ],
+  "アカウント削除": [
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488842_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488843_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488844_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488845_0.jpg",
+  ],
+  "解約": [
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488847_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488848_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488849_0.jpg",
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488850_0.jpg",
+  ],
+  "支払い画面エラー": [
+    "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/error-test.png",
+  ],
+};
+
 function normalizeText(text) {
   return String(text ?? "").trim();
 }
@@ -153,10 +196,21 @@ async function handleLineText({ userId, replyToken, text }) {
 
     try {
       const aiText = await generateAiReply({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
+      
+      // キーワードに該当する画像があれば送信
+      let imagesToSend = [];
+      for (const [keyword, urls] of Object.entries(qaKeywordImageMap)) {
+        if (t.includes(keyword)) {
+          imagesToSend = urls;
+          break;
+        }
+      }
+
       await replyLineMessage({
         channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
         replyToken,
-        text: aiText || "恐れ入ります、うまく回答を生成できませんでした。『ログイン』『ポイント』などをお試しください。",
+        text: aiText,
+        imageUrls: imagesToSend,
       });
     } catch (err) {
       const msg = err && typeof err === "object" && "message" in err ? err.message : String(err);

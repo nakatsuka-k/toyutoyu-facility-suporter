@@ -17,7 +17,20 @@ async function pushLineMessage({ channelAccessToken, to, text }) {
   }
 }
 
-async function replyLineMessage({ channelAccessToken, replyToken, text }) {
+async function replyLineMessage({ channelAccessToken, replyToken, text, imageUrls = [] }) {
+  const messages = [{ type: "text", text }];
+
+  // テキストメッセージ後に画像を追加
+  if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+    for (const imageUrl of imageUrls) {
+      messages.push({
+        type: "image",
+        originalContentUrl: imageUrl,
+        previewImageUrl: imageUrl,
+      });
+    }
+  }
+
   const res = await fetch("https://api.line.me/v2/bot/message/reply", {
     method: "POST",
     headers: {
@@ -26,7 +39,7 @@ async function replyLineMessage({ channelAccessToken, replyToken, text }) {
     },
     body: JSON.stringify({
       replyToken,
-      messages: [{ type: "text", text }],
+      messages,
     }),
   });
 
