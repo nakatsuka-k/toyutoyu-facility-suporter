@@ -110,15 +110,6 @@ function isAiEligibleText(text) {
   return true;
 }
 
-async function replyUsage({ replyToken }) {
-  await replyLineMessage({
-    channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
-    replyToken,
-    text:
-      "操作:\n- ログイン:『ログイン』→メールアドレス→パスワード\n- ポイント: ログイン後に『ポイント』\n- 中断:『キャンセル』",
-  });
-}
-
 async function handleLineText({ userId, replyToken, text }) {
   const t = normalizeText(text);
   if (!t) return;
@@ -186,12 +177,10 @@ async function handleLineText({ userId, replyToken, text }) {
   const current = sessionStore.get(userId);
   if (!current || current.state !== "login") {
     if (!OPENAI_API_KEY) {
-      await replyUsage({ replyToken });
       return;
     }
 
     if (!isAiEligibleText(t)) {
-      await replyUsage({ replyToken });
       return;
     }
 
@@ -257,7 +246,6 @@ async function handleLineText({ userId, replyToken, text }) {
 
   const sess = current;
   if (!sess || sess.state !== "login") {
-    await replyUsage({ replyToken });
     return;
   }
 
