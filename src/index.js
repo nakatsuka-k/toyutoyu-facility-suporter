@@ -185,84 +185,55 @@ async function handleLineText({ userId, replyToken, text }) {
   // If user is NOT in login flow, route other messages to AI (support/inquiry).
   const current = sessionStore.get(userId);
   if (!current || current.state !== "login") {
-    // まずキーワードマッチングをチェック（完全一致）
-    let matchedKeyword = null;
-    let matchedImages = [];
-    for (const [keyword, urls] of Object.entries(qaKeywordImageMap)) {
-      if (t.includes(keyword)) {
-        matchedKeyword = keyword;
-        matchedImages = urls;
-        break;
-      }
-    }
-
-    // キーワードがマッチした場合、Q&A定型文を返す
-    if (matchedKeyword) {
-      // マッピングを通して正規のキーワードに変換
-      const normalizedKeyword = keywordToQaCategoryMap[matchedKeyword] || matchedKeyword;
-      const qaContent = qaContentMap[normalizedKeyword];
-      const images = qaKeywordImageMap[normalizedKeyword] || matchedImages;
-      
-      if (qaContent) {
-        await replyLineMessage({
-          channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
-          replyToken,
-          text: qaContent,
-          imageUrls: images,
-        });
-        return;
-      }
-    }
-
     if (!OPENAI_API_KEY) {
       await replyUsage({ replyToken });
       return;
     }
 
     if (!isAiEligibleText(t)) {
-      // AIで質問内容からQ&Aカテゴリを判定してみる
-      try {
-        const category = await determineQaCategory({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
-        // Q1～Q12に該当する場合
-        if (category && category.match(/^Q\d{1,2}$/)) {
-          const qaIndex = category.toLowerCase(); // "Q1", "Q2", etc.
-          // カテゴリに対応する定型文を取得
-          const categoryToKeywordMap = {
-            "Q1": "ポイント設定",
-            "Q2": "施設情報",
-            "Q3": "売上振込",
-            "Q4": "ポイント単価",
-            "Q5": "パスワード再設定",
-            "Q6": "ポイント購入",
-            "Q7": "新規登録",
-            "Q8": "ポイント支払",
-            "Q9": "問い合わせ",
-            "Q10": "アカウント削除",
-            "Q11": "解約",
-            "Q12": "支払い画面エラー",
-          };
-          const keyword = categoryToKeywordMap[category];
-          const qaContent = keyword ? qaContentMap[keyword] : null;
-          const images = keyword ? qaKeywordImageMap[keyword] : [];
-
-          if (qaContent) {
-            await replyLineMessage({
-              channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
-              replyToken,
-              text: qaContent,
-              imageUrls: images || [],
-            });
-            return;
-          }
-        }
-      } catch (_err) {
-        // 判定失敗時はusage返信
-      }
-      
       await replyUsage({ replyToken });
       return;
     }
 
+    // AIで質問内容からQ&Aカテゴリを判定
+    try {
+      const category = await determineQaCategory({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
+      
+      // Q1～Q12に該当する場合
+      if (category && category.match(/^Q\d{1,2}$/)) {
+        const categoryToKeywordMap = {
+          "Q1": "ポイント設定",
+          "Q2": "施設情報",
+          "Q3": "売上振込",
+          "Q4": "ポイント単価",
+          "Q5": "パスワード再設定",
+          "Q6": "ポイント購入",
+          "Q7": "新規登録",
+          "Q8": "ポイント支払",
+          "Q9": "問い合わせ",
+          "Q10": "アカウント削除",
+          "Q11": "解約",
+          "Q12": "支払い画面エラー",
+        };
+        const keyword = categoryToKeywordMap[category];
+        const qaContent = keyword ? qaContentMap[keyword] : null;
+        const images = keyword ? qaKeywordImageMap[keyword] : [];
+
+        if (qaContent) {
+          await replyLineMessage({
+            channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
+            replyToken,
+            text: qaContent,
+            imageUrls: images || [],
+          });
+          return;
+        }
+      }
+    } catch (_err) {
+      // AI判定失敗時は通常のAI回答処理へ
+    }
+
+    // Q&Aに該当しない場合は通常のAI回答
     try {
       const aiText = await generateAiReply({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
 
