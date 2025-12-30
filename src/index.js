@@ -51,6 +51,8 @@ const qaKeywordImageMap = {
     "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488830_0.jpg",
     "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488831_0.jpg",
   ],
+  "ポイント単価": [],  // 画像なし（テキストのみ）
+  "いくら": [],        // 「いくら」でも検出できるように
   "新規登録": [
     "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488834_0.jpg",
     "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488836_0.jpg",
