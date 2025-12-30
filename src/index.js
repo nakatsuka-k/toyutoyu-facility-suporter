@@ -8,7 +8,7 @@ const { pushLineMessage, replyLineMessage, broadcastLineMessage } = require("./n
 const { verifyLineSignature } = require("./lineWebhook");
 const { LineSessionStore } = require("./lineSessionStore");
 const { authCheck, getUserPoints } = require("./toyutoyuApi");
-const { generateAiReply } = require("./aiResponder");
+const { generateAiReply, qaContentMap } = require("./aiResponder");
 
 const app = express();
 
@@ -185,34 +185,15 @@ async function handleLineText({ userId, replyToken, text }) {
       }
     }
 
-    // キーワードがマッチした場合、AIに質問を渡してQA回答を取得
+    // キーワードがマッチした場合、Q&A定型文を返す
     if (matchedKeyword) {
-      if (!OPENAI_API_KEY) {
+      // キーワードに対応するQ&A定型文を取得
+      const qaContent = qaContentMap[matchedKeyword];
+      if (qaContent) {
         await replyLineMessage({
           channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
           replyToken,
-          text: "申し訳ございません。現在AIサービスが利用できません。",
-          imageUrls: matchedImages,
-        });
-        return;
-      }
-
-      try {
-        const aiText = await generateAiReply({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
-        await replyLineMessage({
-          channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
-          replyToken,
-          text: aiText,
-          imageUrls: matchedImages,
-        });
-        return;
-      } catch (err) {
-        const msg = err && typeof err === "object" && "message" in err ? err.message : String(err);
-        await notifyConsole(`AI reply error: ${msg}`);
-        await replyLineMessage({
-          channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
-          replyToken,
-          text: "恐れ入ります、ただいま自動応答が混み合っています。少し時間をおいてからもう一度お試しください。",
+          text: qaContent,
           imageUrls: matchedImages,
         });
         return;
