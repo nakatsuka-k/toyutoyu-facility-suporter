@@ -36,7 +36,17 @@ const sessionStore = new LineSessionStore({
   loggedInTtlMs: LOGGED_IN_TTL_MS,
 });
 
-// Q&A関連キーワードと対応する画像URL
+// キーワード → Q&Aカテゴリマッピング
+// 複数の検索キーワードから正規の Q&A キーワードに変換
+const keywordToQaCategoryMap = {
+  "いくら": "ポイント単価",
+  "単価": "ポイント単価",
+  "1ポイント": "ポイント単価",
+  "振込": "売上振込",
+  "振り込み": "売上振込",
+  "売上": "売上振込",
+};
+
 const qaKeywordImageMap = {
   "パスワード再設定": [
     "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488825_0.jpg",
@@ -52,7 +62,6 @@ const qaKeywordImageMap = {
     "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488831_0.jpg",
   ],
   "ポイント単価": [],  // 画像なし（テキストのみ）
-  "いくら": [],        // 「いくら」でも検出できるように
   "新規登録": [
     "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488834_0.jpg",
     "https://pub-d1e01f0fee96410f83abf27aa8f5b7c7.r2.dev/S__5488836_0.jpg",
@@ -189,13 +198,17 @@ async function handleLineText({ userId, replyToken, text }) {
 
     // キーワードがマッチした場合、Q&A定型文を返す
     if (matchedKeyword) {
-      const qaContent = qaContentMap[matchedKeyword];
+      // マッピングを通して正規のキーワードに変換
+      const normalizedKeyword = keywordToQaCategoryMap[matchedKeyword] || matchedKeyword;
+      const qaContent = qaContentMap[normalizedKeyword];
+      const images = qaKeywordImageMap[normalizedKeyword] || matchedImages;
+      
       if (qaContent) {
         await replyLineMessage({
           channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
           replyToken,
           text: qaContent,
-          imageUrls: matchedImages,
+          imageUrls: images,
         });
         return;
       }
