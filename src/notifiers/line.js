@@ -31,6 +31,8 @@ async function replyLineMessage({ channelAccessToken, replyToken, text, imageUrl
     }
   }
 
+  console.log(`Sending ${messages.length} messages (${imageUrls.length} images)`);
+
   const res = await fetch("https://api.line.me/v2/bot/message/reply", {
     method: "POST",
     headers: {
@@ -45,8 +47,12 @@ async function replyLineMessage({ channelAccessToken, replyToken, text, imageUrl
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`LINE reply failed: ${res.status} ${res.statusText} ${body}`.trim());
+    const errMsg = `LINE reply failed: ${res.status} ${res.statusText} ${body}`.trim();
+    console.error(errMsg);
+    throw new Error(errMsg);
   }
+  
+  console.log("LINE reply sent successfully");
 }
 
 async function broadcastLineMessage({ channelAccessToken, text }) {
