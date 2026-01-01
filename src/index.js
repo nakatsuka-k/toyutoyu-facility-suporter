@@ -173,6 +173,7 @@ async function handleLineText({ userId, replyToken, text }) {
     // AIで質問内容からQ&Aカテゴリを判定
     try {
       const category = await determineQaCategory({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
+      await notifyConsole(`QA Category: ${category}, Text: ${t}`);
       
       // Q1～Q12に該当する場合
       if (category && category.match(/^Q\d{1,2}$/)) {
@@ -193,6 +194,7 @@ async function handleLineText({ userId, replyToken, text }) {
         const keyword = categoryToKeywordMap[category];
         const qaContent = keyword ? qaContentMap[keyword] : null;
         const images = keyword ? qaKeywordImageMap[keyword] : [];
+        await notifyConsole(`Keyword: ${keyword}, Has Content: ${!!qaContent}, Images Count: ${images.length}`);
 
         if (qaContent) {
           await replyLineMessage({
