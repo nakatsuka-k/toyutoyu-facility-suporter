@@ -105,7 +105,7 @@ async function handleLineText({ userId, replyToken, text }) {
   if (!t) return;
 
   if (!userId) {
-    await replyLineMessage({
+    await replyLineMessage({userId,
       channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
       replyToken,
       text: "個別チャット（ユーザーIDが取得できる環境）でお試しください。",
@@ -115,7 +115,7 @@ async function handleLineText({ userId, replyToken, text }) {
 
   if (t === "キャンセル") {
     sessionStore.clear(userId);
-    await replyLineMessage({
+    await replyLineMessage({userId,
       channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
       replyToken,
       text: "キャンセルしました。",
@@ -125,7 +125,7 @@ async function handleLineText({ userId, replyToken, text }) {
 
   if (t === "ログイン") {
     sessionStore.startLoginFlow(userId);
-    await replyLineMessage({
+    await replyLineMessage({userId,
       channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
       replyToken,
       text: "メールアドレスを送ってください。\n途中でやめる場合は「キャンセル」と送ってください。",
@@ -136,7 +136,7 @@ async function handleLineText({ userId, replyToken, text }) {
   if (t === "ポイント") {
     const sess = sessionStore.get(userId);
     if (!sess || sess.state !== "logged_in" || !sess.email) {
-      await replyLineMessage({
+      await replyLineMessage({userId,
         channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
         replyToken,
         text: "ポイント確認にはログインが必要です。まず「ログイン」と送ってください。",
@@ -147,13 +147,13 @@ async function handleLineText({ userId, replyToken, text }) {
     try {
       const result = await getUserPoints({ baseUrl: TOYUTOYU_WP_BASE_URL, email: sess.email });
       const points = result && typeof result === "object" && "points" in result ? result.points : "";
-      await replyLineMessage({
+      await replyLineMessage({userId,
         channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
         replyToken,
         text: `現在のポイントは ${points} です。`,
       });
     } catch (_err) {
-      await replyLineMessage({
+      await replyLineMessage({userId,
         channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
         replyToken,
         text: "ポイント取得に失敗しました。しばらくしてからもう一度お試しください。",
@@ -197,7 +197,7 @@ async function handleLineText({ userId, replyToken, text }) {
         await notifyConsole(`Keyword: ${keyword}, Has Content: ${!!qaContent}, Images Count: ${images.length}`);
 
         if (qaContent) {
-          await replyLineMessage({
+          await replyLineMessage({userId,
             channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
             replyToken,
             text: qaContent,
@@ -214,7 +214,7 @@ async function handleLineText({ userId, replyToken, text }) {
     try {
       const aiText = await generateAiReply({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, userText: t });
 
-      await replyLineMessage({
+      await replyLineMessage({userId,
         channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
         replyToken,
         text: aiText,
@@ -222,7 +222,7 @@ async function handleLineText({ userId, replyToken, text }) {
     } catch (err) {
       const msg = err && typeof err === "object" && "message" in err ? err.message : String(err);
       await notifyConsole(`AI reply error: ${msg}`);
-      await replyLineMessage({
+      await replyLineMessage({userId,
         channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
         replyToken,
         text: "恐れ入ります、ただいま自動応答が混み合っています。少し時間をおいてからもう一度お試しください。",
@@ -239,7 +239,7 @@ async function handleLineText({ userId, replyToken, text }) {
 
   if (sess.step === "await_email") {
     if (!isValidEmail(t)) {
-      await replyLineMessage({
+      await replyLineMessage({userId,
         channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
         replyToken,
         text: "メールアドレスの形式が正しくないようです。もう一度送ってください。",
@@ -248,7 +248,7 @@ async function handleLineText({ userId, replyToken, text }) {
     }
 
     sessionStore.setAwaitPassword(userId, t);
-    await replyLineMessage({
+    await replyLineMessage({userId,
       channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
       replyToken,
       text: "パスワードを送ってください。\n途中でやめる場合は「キャンセル」と送ってください。",
@@ -267,7 +267,7 @@ async function handleLineText({ userId, replyToken, text }) {
       if (result && typeof result === "object" && result.success === true) {
         const wpUserId = "user_id" in result ? result.user_id : null;
         sessionStore.setLoggedIn(userId, { email: sess.email, wpUserId });
-        await replyLineMessage({
+        await replyLineMessage({userId,
           channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
           replyToken,
           text: "ログインOKです。\nポイントを確認する場合は「ポイント」と送ってください。",
@@ -275,7 +275,7 @@ async function handleLineText({ userId, replyToken, text }) {
         return;
       }
 
-      await replyLineMessage({
+      await replyLineMessage({userId,
         channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
         replyToken,
         text: "メールアドレスまたはパスワードが正しくありません。\nやり直す場合は「ログイン」と送ってください。",
@@ -283,7 +283,7 @@ async function handleLineText({ userId, replyToken, text }) {
     } catch (err) {
       const status = err && typeof err === "object" && "status" in err ? Number(err.status) : 0;
       if (status === 401) {
-        await replyLineMessage({
+        await replyLineMessage({userId,
           channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
           replyToken,
           text: "メールアドレスまたはパスワードが正しくありません。\nやり直す場合は「ログイン」と送ってください。",
@@ -291,7 +291,7 @@ async function handleLineText({ userId, replyToken, text }) {
         return;
       }
 
-      await replyLineMessage({
+      await replyLineMessage({userId,
         channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
         replyToken,
         text: "認証処理でエラーが発生しました。しばらくしてからもう一度お試しください。",
@@ -301,7 +301,7 @@ async function handleLineText({ userId, replyToken, text }) {
     return;
   }
 
-  await replyLineMessage({
+  await replyLineMessage({userId,
     channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
     replyToken,
     text: "操作: 「ログイン」→ メールアドレス → パスワード の順に送ってください。",
