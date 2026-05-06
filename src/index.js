@@ -1,8 +1,6 @@
 const express = require("express");
-const cron = require("node-cron");
 
-const { getEnv, parseTargetUrls, nowJstString } = require("./config");
-const { checkAll } = require("./checker");
+const { getEnv, nowJstString } = require("./config");
 const { notifyConsole } = require("./notifiers/console");
 const { pushLineMessage, replyLineMessage, broadcastLineMessage } = require("./notifiers/line");
 const { verifyLineSignature } = require("./lineWebhook");
@@ -13,11 +11,6 @@ const { generateAiReply, determineQaCategory, qaContentMap } = require("./aiResp
 const app = express();
 
 const PORT = Number(getEnv("PORT", { defaultValue: "8080" }));
-
-const TARGET_URLS = parseTargetUrls(getEnv("TARGET_URLS"));
-const TIMEOUT_MS = Number(getEnv("TIMEOUT_MS", { defaultValue: "10000" }));
-const CRON_SCHEDULE = getEnv("CRON_SCHEDULE", { defaultValue: "*/15 * * * *" });
-const CRON_TIMEZONE = getEnv("CRON_TIMEZONE", { defaultValue: "Asia/Tokyo" });
 
 const LINE_CHANNEL_SECRET = getEnv("LINE_CHANNEL_SECRET", { defaultValue: "" });
 const LINE_CHANNEL_ACCESS_TOKEN = getEnv("LINE_CHANNEL_ACCESS_TOKEN", { defaultValue: "" });
@@ -404,54 +397,7 @@ async function notify(text) {
   }
 }
 
-function formatFailures({ failures }) {
-  const lines = failures.map((f) => {
-    if (f.error) {
-      return `- ${f.url} ERROR: ${f.error}`;
-    }
-    return `- ${f.url} HTTP ${f.status} ${f.statusText || ""}`.trim();
-  });
-
-  return lines.join("\n");
-}
-
-async function runCheckOnce() {
-  const { failures } = await checkAll(TARGET_URLS, { timeoutMs: TIMEOUT_MS });
-
-  if (failures.length === 0) {
-    return;
-  }
-
-  const message = [
-    "【と湯と湯 みまもり】あれれ？サイトが開けないみたいです…（しょんぼり）",
-    `時刻(JST): ${nowJstString()}`,
-    "うまく確認できなかったURLはこちらです（404はOK扱いです）:",
-    formatFailures({ failures }),
-  ].join("\n");
-
-  await notify(message);
-}
-
 app.listen(PORT, "0.0.0.0", () => {
   // eslint-disable-next-line no-console
   console.log(`Listening on :${PORT}`);
-  // eslint-disable-next-line no-console
-  console.log(`Cron schedule: ${CRON_SCHEDULE}`);
-  // eslint-disable-next-line no-console
-  console.log(`Targets: ${TARGET_URLS.join(", ")}`);
 });
-
-cron.schedule(CRON_SCHEDULE, async () => {
-  try {
-    await runCheckOnce();
-  } catch (err) {
-    const msg = err && typeof err === "object" && "message" in err ? err.message : String(err);
-    await notify(
-      [
-        "【と湯と湯 みまもり】ごめんなさい…監視処理でエラーが出ちゃいました",
-        `時刻(JST): ${nowJstString()}`,
-        `内容: ${msg}`,
-      ].join("\n")
-    );
-  }
-}, { timezone: CRON_TIMEZONE });
